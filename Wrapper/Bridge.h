@@ -47,7 +47,19 @@ public:
 			lua_pushnumber(State, roblox_luaL_ref(RobloxState, LUA_REGISTRYINDEX));
 			lua_pushcclosure(State, vanillaBridge, 1);
 			break;
-			
+		case ROBLOX_LUA_TTABLE:
+			roblox_lua_pushvalue(RobloxState, index);
+			lua_newtable(State);
+			roblox_lua_pushnil(RobloxState);
+			while (roblox_lua_next(RobloxState, -2) != ROBLOX_LUA_TNIL)
+			{
+				UnWrap(RobloxState, State, -2);
+				UnWrap(RobloxState, State, -1);
+				lua_settable(State, -3);
+				roblox_lua_pop(RobloxState, 1);
+			}
+			roblox_lua_pop(RobloxState, 1);
+			break;
 		}
 	}
 
