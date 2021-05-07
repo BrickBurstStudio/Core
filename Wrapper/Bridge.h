@@ -28,12 +28,55 @@ namespace Bridge
 	{
 		int Type = lua_type(State, Index);
 		
-		switch(Type)
+		switch (Type)
 		{
+		case LUA_TLIGHTUSERDATA:
+			roblox_lua_pushlightuserdata(RobloxState, nullptr);
+
+			break;
 		case LUA_TNIL:
+			roblox_lua_pushnil(RobloxState);
+			break;
+		case LUA_TNUMBER:
+			roblox_lua_pushnumber(RobloxState, lua_tonumber(State, Index));
+			break;
+		case LUA_TBOOLEAN:
+			roblox_lua_pushboolean(RobloxState, lua_toboolean(State, Index));
+			break;
+		case LUA_TSTRING:
+			roblox_lua_pushstring(RobloxState, lua_tostring(State, Index));
+			break;
+		case LUA_TTHREAD:
+			roblox_lua_newthread(RobloxState);
+			break;
+		case LUA_TFUNCTION:
+			lua_pushvalue(State, Index);
+			roblox_lua_pushnumber(RobloxState, luaL_ref(State, LUA_REGISTRYINDEX));
+			roblox_lua_pushcclosure(RobloxState, int3breakpoints[0], 1);
+			break;
+		case LUA_TTABLE:
+			lua_pushvalue(State, Index);
+			roblox_lua_newtable(RobloxState);
+			lua_pushnil(State);
+			while (lua_next(State, -2) != LUA_TNIL)
 			{
-				
+				Wrap(State, RobloxState, -2);
+				Wrap(State, RobloxState, -1);
+				roblox_lua_settable(RobloxState, -3);
+				lua_pop(State, 1);
 			}
+			lua_pop(State, 1);
+			break;
+		case LUA_TUSERDATA:
+			lua_pushvalue(State, Index);
+			lua_gettable(State, LUA_REGISTRYINDEX);
+			if (!lua_isnil(State, -1))
+				roblox_lua_getfield(RobloxState, LUA_REGISTRYINDEX, lua_tostring(State, -1));
+			else
+				roblox_lua_newuserdata(RobloxState, 0);
+			lua_pop(State, 1);
+			break;
+		default: break;
 		}
 	}
 
@@ -179,7 +222,7 @@ namespace Bridge
 		{
 			const char* errormessage = roblox_lua_tostring(RobloxState, -1, 0);
 
-			if (!errormessage || stRobloxStateen(errormessage) == 0)
+			if (!errormessage || strlen(errormessage) == 0)
 				errormessage = "Error occoured, no output from Lua\n";
 
 			if (strcmp(errormessage, "attempt to yield across metamethod/C-call boundary") == 0)
