@@ -30,7 +30,7 @@ typedef void(__fastcall* rsettop)(DWORD rL, int idx);
 rsettop roblox_lua_settop = (rsettop)(unprotect(offset(0x0)));
 
 typedef bool(__cdecl* toboolean)(DWORD rL, bool idx);
-toboolean roblox_lua_toboolean = (toboolean)(offset(0x0));
+toboolean roblox_lua_toboolean = (toboolean)(unprotect(offset(0x0)));
 
 typedef void(__fastcall* pushvalue)(DWORD rL, DWORD idx);
 pushvalue roblox_lua_pushvalue = (pushvalue)(unprotect(offset(0x0)));
@@ -39,7 +39,7 @@ typedef double(__thiscall* pushnumber)(DWORD rL, double idx);
 pushnumber roblox_lua_pushnumber = (pushnumber)(unprotect(offset(0x0)));
 
 typedef void(__fastcall* rpushstring)(DWORD rL, const char*);
-rpushstring roblox_lua_pushstring = (rpushstring)(offset(0x0));
+rpushstring roblox_lua_pushstring = (rpushstring)(unprotect(offset(0x0)));
 
 typedef int(__cdecl* pcall)(DWORD rL, DWORD, DWORD, DWORD);
 pcall roblox_luad_pcall = (pcall)(unprotect(offset(0x0)));
@@ -54,7 +54,7 @@ typedef bool(__cdecl* rboolean)(unsigned int, bool);
 rboolean roblox_lua_pushboolean = (rboolean)(unprotect(offset(0x0)));
 
 typedef double(__cdecl* rtonumber)(DWORD, int);
-rtonumber roblox_lua_tonumber = (rtonumber)(offset(0x0));
+rtonumber roblox_lua_tonumber = (rtonumber)(unprotect(offset(0x0)));
 
 typedef void(__stdcall* rpushcclosure)(DWORD rL, int fn, int non);
 rpushcclosure roblox_lua_pushcclosure = (rpushcclosure)(unprotect(offset(0x0)));
@@ -72,25 +72,25 @@ typedef void* (__cdecl* rsettable)(DWORD rL, int);
 rsettable roblox_lua_settable = (rsettable)(unprotect(offset(0x0)));
 
 typedef DWORD(__cdecl* rtype)(DWORD, int);
-rtype roblox_lua_type = (rtype)(offset(0x0));
+rtype roblox_lua_type = (rtype)(unprotect(offset(0x0)));
 
 typedef DWORD(__cdecl* rnewthread)(DWORD);
 rnewthread roblox_lua_newthread = (rnewthread)unprotect(offset(0x0));
 
 typedef DWORD(__cdecl* rref)(DWORD, DWORD);
-rref roblox_luaL_ref = (rref)(Ret::unprotect<DWORD>((byte*)(offset(0x0))));
+rref roblox_luaL_ref = (rref)(Ret::unprotect<DWORD>((byte*)(unprotect(offset(0x0)))));
 
 typedef void(__cdecl* rrawgeti)(DWORD, DWORD, DWORD);
 rrawgeti roblox_lua_rawgeti = (rrawgeti)unprotect(offset(0x0));
 
 typedef int(__cdecl* gettop)(DWORD);
-gettop roblox_lua_gettop = (gettop)(offset(0x0));
+gettop roblox_lua_gettop = (gettop)(unprotect(offset(0x0)));
 
 typedef void(__cdecl* rpushlight)(DWORD, void*);
 rpushlight roblox_lua_pushlightuserdata = (rpushlight)(unprotect(offset(0x0)));
 
 typedef void* (__cdecl* touserdata)(DWORD, int);
-touserdata roblox_lua_touserdata = (touserdata)Retcheck::Unprotect(offset(0x0), true);
+touserdata roblox_lua_touserdata = (touserdata)Retcheck::Unprotect(unprotect(offset(0x0)), true);
 
 // Helpers
 
