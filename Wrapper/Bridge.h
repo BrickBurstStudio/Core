@@ -1,30 +1,75 @@
 #pragma once
 #include <string>
 #include <windows.h>
-
 #include "Lua.h"
 #include "Offsets.h"
 #include <vector>
+#include <limits>
 
 
 
 namespace Bridge
 {
 	int registry;
-	DWORD m_RobloxState;
-	lua_State* m_L;
+	DWORD RobloxState;
+	lua_State* LuaState;
 	std::vector<int> int3breakpoints;
 
 	void Wrap(lua_State* State, DWORD RobloxState, int Index);
 	void UnWrap(DWORD RobloxState, lua_State* State, int Index);
 
-	int robloxBridge(DWORD RobloxState);
-	int vanillaBridge(lua_State* L);
+	LONG WINAPI vehHandler(PEXCEPTION_POINTERS ex);
+	VOID VehHandlerpush();
+	int RobloxBridge(DWORD RobloxState);
+	int LuaBridge(lua_State* L);
 	int resumea(DWORD thread);
 }
 
 namespace Bridge
 {
+
+	LONG WINAPI vehHandler(PEXCEPTION_POINTERS ex)
+	{
+		switch (ex->ExceptionRecord->ExceptionCode)
+		{
+		case (DWORD)0x80000003L:
+		{
+			if (ex->ContextRecord->Eip == int3breakpoints[0])
+			{
+				ex->ContextRecord->Eip = (DWORD)(RobloxBridge);
+				return EXCEPTION_CONTINUE_EXECUTION;
+			}
+
+			if (ex->ContextRecord->Eip == int3breakpoints[1])
+			{
+				ex->ContextRecord->Eip = (DWORD)(Bridge::resumea);
+				return EXCEPTION_CONTINUE_EXECUTION;
+			}
+			return -1;
+		}
+		default: return 0;
+		}
+		return 0;
+	}
+
+	DWORD locateINT3() {
+		DWORD _s = offset(0x400000);
+		const char i3_8opcode[8] = { 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC };
+		for (int i = 0; i < INT_MAX; i++) {
+			if (memcmp((void*)(_s + i), i3_8opcode, sizeof(i3_8opcode)) == 0) {
+				return (_s + i);
+			}
+		}
+		return NULL;
+	}
+
+	VOID VehHandlerpush()
+	{
+		int3breakpoints.push_back(locateINT3());
+		int3breakpoints.push_back(locateINT3());
+		AddVectoredExceptionHandler(1, vehHandler);
+	}
+	
 	void Wrap(lua_State* State, DWORD RobloxState, int Index)
 	{
 		int Type = lua_type(State, Index);
@@ -107,7 +152,7 @@ namespace Bridge
 		case ROBLOX_LUA_TFUNCTION:
 			roblox_lua_pushvalue(RobloxState, Index);
 			lua_pushnumber(State, roblox_luaL_ref(RobloxState, LUA_REGISTRYINDEX));
-			lua_pushcclosure(State, vanillaBridge, 1);
+			lua_pushcclosure(State, LuaBridge, 1);
 			break;
 		case ROBLOX_LUA_TTABLE:
 			roblox_lua_pushvalue(RobloxState, Index);
@@ -168,12 +213,12 @@ namespace Bridge
 
 
 
-	int robloxBridge(DWORD RobloxState)
+	int RobloxBridge(DWORD RobloxState)
 	{
 
-		lua_pushstring(m_L, std::to_string(++registry).c_str());
-		lua_State* L = lua_newthread(m_L);
-		lua_settable(m_L, LUA_REGISTRYINDEX);
+		lua_pushstring(LuaState, std::to_string(++registry).c_str());
+		lua_State* L = lua_newthread(LuaState);
+		lua_settable(LuaState, LUA_REGISTRYINDEX);
 
 		int key = roblox_lua_tonumber(RobloxState, lua_upvalueindex(1));
 
@@ -188,8 +233,8 @@ namespace Bridge
 
 		case LUA_YIELD:
 
-			roblox_lua_pushlightuserdata(m_RobloxState, (void*)L);
-			roblox_lua_pushcclosure(m_RobloxState, int3breakpoints[1], 1);
+			roblox_lua_pushlightuserdata(RobloxState, (void*)L);
+			roblox_lua_pushcclosure(RobloxState, int3breakpoints[1], 1);
 			return -1;
 		case LUA_ERRRUN:
 			printf("RVX ROBLOX ERROR: %s\n", lua_tostring(L, -1));
@@ -208,22 +253,22 @@ namespace Bridge
 		lua_close(L);
 	}
 
-	int vanillaBridge(lua_State* State) {
+	int LuaBridge(lua_State* State) {
 
-		roblox_lua_pushstring(m_RobloxState, std::to_string(++registry).c_str());
-		DWORD RobloxState = roblox_lua_newthread(m_RobloxState);
-		roblox_lua_settable(m_RobloxState, LUA_REGISTRYINDEX);
+		roblox_lua_pushstring(RobloxState, std::to_string(++registry).c_str());
+		DWORD NewRobloxState = roblox_lua_newthread(RobloxState);
+		roblox_lua_settable(NewRobloxState, LUA_REGISTRYINDEX);
 
 		int key = lua_tonumber(State, lua_upvalueindex(1));
 
-		roblox_lua_rawgeti(RobloxState, LUA_REGISTRYINDEX, key);
+		roblox_lua_rawgeti(NewRobloxState, LUA_REGISTRYINDEX, key);
 
 		for (int arg = 1; arg <= lua_gettop(State); ++arg)
-			Wrap(State, RobloxState, arg);
+			Wrap(State, NewRobloxState, arg);
 
-		if (roblox_lua_pcall(RobloxState, lua_gettop(State), LUA_MULTRET, 0))
+		if (roblox_lua_pcall(NewRobloxState, lua_gettop(State), LUA_MULTRET, 0))
 		{
-			const char* errormessage = roblox_lua_tostring(RobloxState, -1, 0);
+			const char* errormessage = roblox_lua_tostring(NewRobloxState, -1, 0);
 
 			if (!errormessage || strlen(errormessage) == 0)
 				errormessage = "Error occoured, no output from Lua\n";
@@ -231,10 +276,10 @@ namespace Bridge
 			if (strcmp(errormessage, "attempt to yield across metamethod/C-call boundary") == 0)
 			{
 
-				roblox_lua_pop(RobloxState, 1);
+				roblox_lua_pop(NewRobloxState, 1);
 				lua_pushthread(State);
 				lua_pushcclosure(State, &resume, 1);
-				Wrap(State, RobloxState, -1);
+				Wrap(State, NewRobloxState, -1);
 
 				return lua_yield(State, 0);
 			}
@@ -254,3 +299,11 @@ namespace Bridge
 		lua_close(State);
 	}
 };
+
+void PushGlobal(DWORD rL, lua_State* L, const char* s)
+{
+	roblox_lua_getglobal(rL, s);
+	Bridge::UnWrap(rL, L, -1);
+	lua_setglobal(L, s);
+	roblox_lua_pop(rL, 1);
+}
