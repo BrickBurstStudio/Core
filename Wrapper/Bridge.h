@@ -5,9 +5,25 @@
 #include "Lua.h"
 #include "Offsets.h"
 
-class Bridge
+
+
+namespace Bridge
 {
-public:
+	int registry;
+	DWORD m_rL;
+	lua_State* m_L;
+	std::vector<int> int3breakpoints;
+
+	void Wrap(lua_State* State, DWORD RobloxState, int Index);
+	void UnWrap(DWORD RobloxState, lua_State* State, int Index);
+
+	int robloxBridge(DWORD rL);
+	int vanillaBridge(lua_State* L);
+	int resumea(DWORD thread);
+}
+
+namespace Bridge
+{
 	void Wrap(lua_State* State, DWORD RobloxState, int Index)
 	{
 		int Type = lua_type(State, Index);
@@ -48,7 +64,7 @@ public:
 			lua_pushcclosure(State, vanillaBridge, 1);
 			break;
 		case ROBLOX_LUA_TTABLE:
-			roblox_lua_pushvalue(RobloxState, index);
+			roblox_lua_pushvalue(RobloxState, Index);
 			lua_newtable(State);
 			roblox_lua_pushnil(RobloxState);
 			while (roblox_lua_next(RobloxState, -2) != ROBLOX_LUA_TNIL)
@@ -63,12 +79,6 @@ public:
 		}
 	}
 
-private:
-	int registry;
-	DWORD m_rL;
-	lua_State* m_L;
-	std::vector<int> int3breakpoints;
-	
 	static int resume(lua_State* thread)
 	{
 		lua_State* L = lua_tothread(thread, lua_upvalueindex(1));
@@ -91,7 +101,49 @@ private:
 		return lua_resume(L, nargs);
 
 	}
-	
+
+
+
+	int robloxBridge(DWORD rL)
+	{
+
+		lua_pushstring(m_L, std::to_string(++registry).c_str());
+		lua_State* L = lua_newthread(m_L);
+		lua_settable(m_L, LUA_REGISTRYINDEX);
+
+		int key = roblox_lua_tonumber(rL, lua_upvalueindex(1));
+
+		lua_rawgeti(L, LUA_REGISTRYINDEX, key);
+
+		for (int arg = 1; arg <= roblox_lua_gettop(rL); ++arg)
+			UnWrap(rL, L, arg);
+
+		switch (lua_pcall(L, roblox_lua_gettop(rL), LUA_MULTRET, 0))
+		{
+
+
+		case LUA_YIELD:
+
+			roblox_lua_pushlightuserdata(m_rL, (void*)L);
+			roblox_lua_pushcclosure(m_rL, int3breakpoints[1], 1);
+			return -1;
+		case LUA_ERRRUN:
+			printf("RVX ROBLOX ERROR: %s\n", lua_tostring(L, -1));
+			return -1;
+		default: break;
+		}
+
+		int args = 0;
+
+		for (int arg = 1; arg <= lua_gettop(L); ++arg, ++args)
+			Wrap(L, rL, arg);
+
+		lua_settop(L, 0);
+
+		return args;
+		lua_close(L);
+	}
+
 	int vanillaBridge(lua_State* State) {
 
 		roblox_lua_pushstring(m_rL, std::to_string(++registry).c_str());
@@ -135,46 +187,6 @@ private:
 		roblox_lua_settop(rL, 0);
 
 		return args;
-	}
-
-	int robloxBridge(DWORD rL)
-	{
-
-		lua_pushstring(m_L, std::to_string(++registry).c_str());
-		lua_State* L = lua_newthread(m_L);
-		lua_settable(m_L, LUA_REGISTRYINDEX);
-
-		int key = roblox_lua_tonumber(rL, lua_upvalueindex(1));
-
-		lua_rawgeti(L, LUA_REGISTRYINDEX, key);
-
-		for (int arg = 1; arg <= roblox_lua_gettop(rL); ++arg)
-			UnWrap(rL, L, arg);
-
-		switch (lua_pcall(L, roblox_lua_gettop(rL), LUA_MULTRET, 0))
-		{
-
-
-		case LUA_YIELD:
-
-			roblox_lua_pushlightuserdata(m_rL, (void*)L);
-			roblox_lua_pushcclosure(m_rL, Bridge::int3breakpoints[1], 1);
-			return -1;
-		case LUA_ERRRUN:
-			printf("RVX ROBLOX ERROR: %s\n", lua_tostring(L, -1));
-			return -1;
-		default: break;
-		}
-
-		int args = 0;
-
-		for (int arg = 1; arg <= lua_gettop(L); ++arg, ++args)
-			Wrap(L, rL, arg);
-
-		lua_settop(L, 0);
-
-		return args;
-		lua_close(L);
-
+		lua_close(State);
 	}
 };
