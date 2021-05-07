@@ -32,7 +32,6 @@ namespace Bridge
 		{
 		case LUA_TLIGHTUSERDATA:
 			roblox_lua_pushlightuserdata(RobloxState, nullptr);
-
 			break;
 		case LUA_TNIL:
 			roblox_lua_pushnil(RobloxState);
@@ -86,6 +85,9 @@ namespace Bridge
 
 		switch (Type)
 		{
+		case ROBLOX_LUA_TLIGHTUSERDATA:
+			lua_pushlightuserdata(State, nullptr);
+			break;
 		case ROBLOX_LUA_TNIL:
 				lua_pushnil(State);
 				break;
