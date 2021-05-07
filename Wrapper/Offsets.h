@@ -1,7 +1,5 @@
 #pragma once
-#include <vector>
 #include <windows.h>
-#include "Lua.h"
 #include "RetCheck.h"
 
 #define offset(x) (x - 0x400000 + (DWORD)GetModuleHandleA(0))
