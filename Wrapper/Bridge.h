@@ -4,6 +4,7 @@
 
 #include "Lua.h"
 #include "Offsets.h"
+#include <vector>
 
 
 
