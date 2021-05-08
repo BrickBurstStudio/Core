@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include "Bridge.h"
+#include "LoadedLua.h";
 
 using Bridge::LuaState;
 using Bridge::RobloxState;
@@ -18,6 +19,24 @@ static int UserDataGC(lua_State *Thread)
         }
     }
     return 0;
+}
+
+int GetRawMetatable(lua_State *L)
+{
+    Bridge::Wrap(L, RobloxState, 1);
+
+    if (roblox_lua_getmetatable(RobloxState, -1) == 0)
+    {
+        lua_pushnil(LuaState);
+        return 0;
+    }
+
+    Bridge::UnWrap(RobloxState, LuaState, -1);
+    return 1;
+}
+
+DWORD WINAPI Pipe(PVOID lvpParameter) {
+
 }
 
 void Init()
@@ -83,6 +102,20 @@ void Init()
     PushGlobal(RobloxState, LuaState, "Delay");
     PushGlobal(RobloxState, LuaState, "tick");
     PushGlobal(RobloxState, LuaState, "LoadLibrary");
+
+    // Roblox Lua Setup
+
+    lua_register(LuaState, "getrawmetatable", GetRawMetatable);
+    lua_newtable(LuaState);
+    lua_setglobal(LuaState, "_G");
+
+    // Pipe
+
+    CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)Pipe, NULL, NULL, NULL);
+
+    // Loaded Message
+
+    luaL_loadstring(LuaState, LoadedScript.c_str());
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
