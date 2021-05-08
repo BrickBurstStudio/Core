@@ -32,5 +32,8 @@
     <ClInclude Include="RetCheck.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LoadedLua.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
